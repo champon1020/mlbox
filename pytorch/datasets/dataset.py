@@ -13,21 +13,21 @@ class Dataset(data.Dataset):
     Dataset class.
 
     Attributes:
-        annot_path (str): Annotation file path.
-        annots (List): Annotation list.
+        annotation_path (str): Annotation file path.
+        annotations (List): Annotation list.
 
     """
 
-    def __init__(self, annot_path: str):
+    def __init__(self, annotation_path: str):
         super().__init__()
-        self.annot_path = annot_path
-        self.annots = []
+        self.annotation_path = annotation_path
+        self.annotations = []
 
     def __len__(self) -> int:
-        return len(self.annots)
+        return len(self.annotations)
 
     def __getitem__(self, idx: int) -> Dict:
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        return {"label": self.annots[idx]}
+        return {"label": self.annotations[idx]}

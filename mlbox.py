@@ -24,6 +24,13 @@ def parse_args():
         required=True,
     )
     parser.add_argument(
+        "-p",
+        "--path",
+        help="Project directory path",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
         "-f",
         "--framework",
         choices=["pytorch"],
@@ -44,9 +51,12 @@ def main():
     """
     args = parse_args()
 
-    pwd = os.getcwd()
-    project_path = os.path.join(pwd, args.name)
+    path = args.path
+    if not os.path.isdir(path):
+        print("ERROR: Path is not directory {}".format(path))
+        sys.exit(1)
 
+    project_path = os.path.join(path, args.name)
     if os.path.exists(project_path):
         print("ERROR: File exists {}".format(project_path))
         sys.exit(1)

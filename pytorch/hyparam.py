@@ -47,11 +47,11 @@ def objective(trial: optuna.trial.Trial):
     for epoch in range(EPOCHS):
         # Training phase.
         training.model.train()
-        training.process(training.train_loader)
+        training.process()
 
         # Validation phase.
         training.model.eval()
-        _, accuracy = training.process(training.valid_loader)
+        _, accuracy = training.validate()
 
         trial.report(accuracy, epoch)
 

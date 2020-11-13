@@ -22,4 +22,4 @@ class TrainConfig(DefaultConfig):
     """
 
     learning_rate: float = 1e-4
-    valid_span: int = 5
+    optimizer_name = "Adam"

@@ -7,7 +7,7 @@ import torch
 from torch import Tensor
 
 
-def multi_label_acc(pred: Tensor, target: Tensor):
+def multi_label_accuracy(pred: Tensor, target: Tensor):
     """
     Calculate average accuracy of multi label classification.
 

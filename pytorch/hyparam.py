@@ -7,7 +7,7 @@ import mlflow
 import optuna
 import torch.optim as optim
 
-from datasets.dataset import make_datasets
+from datasets.dataset import Dataset
 from main import parse_args
 from models.model import make_model
 from train import Training
@@ -25,8 +25,9 @@ def objective(trial: optuna.trial.Trial):
     # Parse CLI arguments.
     args = parse_args()
 
-    # Prepare some instances for training.
-    train_ds, valid_ds, _ = make_datasets(args.train_path, args.valid_path, None)
+    # Prepare dataset class.
+    train_ds = Dataset(args.train_path)
+    valid_ds = Dataset(args.valid_path)
 
     # Suggestions.
     # >>> TODO >>>

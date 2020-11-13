@@ -1,0 +1,30 @@
+name: pytorch_project
+
+entry_points:
+  train:
+    parameters:
+      train-path: {type: str, default: "/path/to/train_dataset"}
+      valid-path: {type: str, default: "/path/to/valid_dataset"}
+    command: |
+      python main.py \
+        --mode train \
+        --train-path {train-path} \
+        --valid-path {valid-path}
+
+  evaluate:
+    parameters:
+      test-path: {type: str, default: "/path/to/test_dataset"}
+      ckpt-path: {type: str, default: "*"}
+    command: |
+      python main.py \
+        --mode evaluate \
+        --test-path {test-path}
+      
+  hyparam:
+    parameters:
+      train-path: {type: str, default: "/path/to/train_dataset"}
+      valid-path: {type: str, default: "/path/to/valid_dataset"}
+    command: |
+      python hyparam.py \
+        --train-path {train-path} \
+        --valid-path {valid-path}

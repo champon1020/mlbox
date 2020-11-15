@@ -8,9 +8,9 @@ import argparse
 import torch
 import torch.utils.data as data
 
-from configs.evaluate import EvaluateConfig
-from datasets.dataset import Dataset
-from models.model import Model
+from configs import EvaluateConfig
+from datasets import Dataset
+from models import Model
 
 
 class Evaluation:

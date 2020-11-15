@@ -11,9 +11,10 @@ import torch
 import torch.optim as optim
 import torch.utils.data as data
 
-from configs.train import TrainConfig
-from datasets.dataset import Dataset
-from models.model import Model, make_model
+from configs import TrainConfig
+from datasets import Dataset
+from miscs import print_loss_accuracy
+from models import Model, make_model
 
 
 class Training:
@@ -51,11 +52,32 @@ class Training:
         """
         for epoch in range(self.epochs):
             self.model.train()
-            loss, accuracy = self.process()
+            loss, accuracy = self.train_epoch()
+            loss = loss.item()
+            accuracy = accuracy.item()
 
-    def process(self) -> Tuple[float, float]:
+            print_loss_accuracy("TRAIN", loss, accuracy)
+            mlflow.log_metrics(
+                {"train_loss": loss, "train_accuracy": accuracy},
+                step=epoch,
+            )
+
+            if (epoch + 1) % 5 == 0:
+                valid_loss, valid_accuracy = self.validate()
+                valid_loss = valid_loss.item()
+                valid_accuracy = valid_accuracy.item()
+
+                print_loss_accuracy("VALID", valid_loss, valid_accuracy)
+                mlflow.log_metrics(
+                    {"valid_loss": valid_loss, "valid_accuracy": valid_accuracy},
+                    step=epoch,
+                )
+
+    def train_epoch(self) -> Tuple[float, float]:
         """
-        Training process executed by epoch.
+        Returns:
+            Tensor: Loss value.
+            Tensor: Accuracy value.
 
         """
         itr = 0
@@ -73,7 +95,9 @@ class Training:
 
     def validate(self) -> Tuple[float, float]:
         """
-        Validation process.
+        Returns:
+            Tensor: Loss value.
+            Tensor: Accuracy value.
 
         """
         self.model.eval()
@@ -134,6 +158,7 @@ def main():
     optimizer = getattr(optim, config.optimizer_name)(
         model.parameters(), lr=config.learning_rate
     )
+
     training = Training(
         train_ds,
         valid_ds,

@@ -5,7 +5,7 @@ This module provides configuration dataclass for training.
 
 import dataclasses
 
-from default import DefaultConfig
+from .default import DefaultConfig
 
 
 @dataclasses.dataclass(frozen=True)

@@ -5,7 +5,7 @@ This module provides configuration dataclass for optimizing hyperparameters.
 
 import dataclasses
 
-from default import DefaultConfig
+from .default import DefaultConfig
 
 
 @dataclasses.dataclass(frozen=True)

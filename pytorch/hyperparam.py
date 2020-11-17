@@ -2,8 +2,8 @@
 Search best hyperparameters with Optuna.
 
 """
-
 import mlflow
+import numpy as np
 import optuna
 import torch.optim as optim
 
@@ -48,39 +48,46 @@ def objective(trial: optuna.trial.Trial):
         config.epochs,
     )
 
-    for epoch in range(config.epochs):
-        # Training phase.
-        training.model.train()
-        loss, _ = training.train_epoch()
+    accuracy_list = []
 
-        # Validation phase.
-        training.model.eval()
-        _, accuracy = training.validate()
+    with mlflow.start_run(run_name=study.study_name):
+        mlflow.log_params(trial.params)
+        for epoch in range(config.epochs):
+            # Training phase.
+            training.model.train()
+            train_loss, train_accuracy = training.train_epoch()
+            mlflow.log_metrics(
+                {"train_loss": train_loss, "train_accuracy": train_accuracy},
+                step=epoch + 1,
+            )
 
-        trial.report(accuracy, epoch)
+            # Validation phase.
+            training.model.eval()
+            valid_loss, valid_accuracy = training.validate()
+            mlflow.log_metrics(
+                {"valid_loss": valid_loss, "valid_accuracy": valid_accuracy},
+                step=epoch + 1,
+            )
 
-        if trial.should_prune():
-            print("Pruned with epoch {}".format(epoch))
-            raise optuna.exceptions.TrialPruned()
+            accuracy_list.append(valid_accuracy.item())
 
-        print("Epoch {}: TrainLoss: {}, ValidAcc: {}".format(epoch, loss, accuracy))
+            trial.report(valid_accuracy.item(), epoch)
+
+            if trial.should_prune():
+                print("Pruned with epoch {}".format(epoch))
+                raise optuna.exceptions.TrialPruned()
+
+            print(
+                "Epoch {}: TrainLoss: {:.5f}, ValidLoss: {:.5f}, ValidAcc: {:.5f}".format(
+                    epoch + 1, train_loss, valid_loss, valid_accuracy
+                )
+            )
+
+        accuracy_list.sort()
+        accuracy = np.mean(accuracy_list[-10:])
+        mlflow.log_metrics({"top10_avg_accuracy": accuracy})
 
     return accuracy
-
-
-def mlflow_callback(study: optuna.study.Study, trial: optuna.trial.FrozenTrial):
-    """
-    Callback function for mlflow.
-
-    """
-    trial_value = trial.value if trial.value is not None else float("nan")
-    with mlflow.start_run(run_name=study.study_name):
-        # >>> TODO >>>
-
-        mlflow.log_params(trial.params)
-        mlflow.log_metrics({"accuracy": trial_value})
-
-        # <<< TODO <<<
 
 
 if __name__ == "__main__":
@@ -88,7 +95,7 @@ if __name__ == "__main__":
         direction="maximize",
         pruner=optuna.pruners.MedianPruner(n_startup_trials=3, n_warmup_steps=10),
     )
-    study.optimize(objective, n_trials=100, callbacks=[mlflow_callback])
+    study.optimize(objective, n_trials=100)
 
     pruned_trials = [
         t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED

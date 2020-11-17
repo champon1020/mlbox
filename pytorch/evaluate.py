@@ -3,10 +3,14 @@ This module provides evaluation class.
 
 """
 
+import argparse
+
+import torch
 import torch.utils.data as data
 
-from datasets.dataset import Dataset
-from models.model import Model
+from configs import EvaluateConfig
+from datasets import Dataset
+from models import Model
 
 
 class Evaluation:
@@ -39,3 +43,56 @@ class Evaluation:
         accuracy = batch_accuracy / float(itr)
 
         return accuracy
+
+
+def parse_cli_args():
+    """
+    Parse cli arguments.
+
+    Returns:
+        object: Parsed arguments.
+
+    """
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--test-path",
+        help="Testing dataset path",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        "--features-path",
+        help="Audio and visual features directory path",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        "-c",
+        "--ckpt-path",
+        help="Checkpoint file path",
+        type=str,
+        required=True,
+    )
+
+    args = parser.parse_args()
+    return args
+
+
+def main():
+    """
+    Main process.
+
+    """
+    args = parse_cli_args()
+    config = EvaluateConfig()
+
+    test_ds = Dataset(args.test_path)
+
+    model = torch.load(args.ckpt_path)
+    evaluation = Evaluation(test_ds, model)
+    evaluation.evaluate()
+
+
+if __name__ == "__main__":
+    main()

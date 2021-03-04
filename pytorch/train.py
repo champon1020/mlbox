@@ -2,175 +2,162 @@
 This module provides training class.
 
 """
-
 import argparse
-from typing import Tuple
+from typing import Callable, Tuple
 
-import mlflow
 import torch
 import torch.optim as optim
 import torch.utils.data as data
+import wandb
 
-from configs import TrainConfig
-from datasets import Dataset
-from miscs import print_loss_accuracy
-from models import Model, make_model
+from config import Config
+from dataset import Dataset
+from model import Model, make_model
+from util import accuracy
 
 
 class Training:
     """
-    This class provides training functions.
-
     Attributes:
-        train_loader (Dataset): Training dataset loader.
-        valid_loader (Dataset): Validation dataset loader.
-        model (Model): Model class.
-        optimizer (optim.Optimizer): Optimizer object.
-        epochs (int): Epoch size.
+        cfg: Configuration.
+        model: Model which implements torch.nn.Module.
+        train_ds: Training dataset which implements torch.utils.data.Dataset.
+        valid_ds: Validation dataset which implements torch.utils.data.Dataset.
 
     """
 
     def __init__(
         self,
-        train_ds: Dataset,
-        valid_ds: Dataset,
-        model: Model,
-        optimizer: optim.Optimizer,
-        batch_size: int,
-        epochs: int,
+        _cfg: Config,
+        _model: Model,
+        _train_ds: Dataset,
+        _valid_ds: Dataset,
+        _loss_fn: Callable,
+        _optimizer: optim.Optimizer,
     ):
-        self.train_loader = data.DataLoader(train_ds, batch_size, shuffle=True)
-        self.valid_loader = data.DataLoader(valid_ds, batch_size, shuffle=False)
-        self.model = model
-        self.optimizer = optimizer
-        self.epochs = epochs
+        self.model = _model
+        self.train_loader = data.DataLoader(_train_ds, cfg.batch_size, shuffle=True)
+        self.valid_loader = data.DataLoader(_valid_ds, cfg.batch_size, shuffle=False)
+        self.epochs = _cfg.epochs
+        self.loss_fn = _loss_fn
+        self.optimizer = _optimizer
 
-    def train(self):
+    def train(self) -> None:
         """
-        Training process.
+        Model training.
 
         """
         for epoch in range(self.epochs):
-            self.model.train()
-            loss, accuracy = self.train_epoch()
-            loss = loss.item()
-            accuracy = accuracy.item()
-
-            print_loss_accuracy("TRAIN", loss, accuracy)
-            mlflow.log_metrics(
-                {"train_loss": loss, "train_accuracy": accuracy},
-                step=epoch,
+            print("Epoch {} / {}".format(epoch + 1, self.epochs))
+            acc, loss = self._train_epoch()
+            valid_acc, valid_loss = self.validate()
+            wandb.log(
+                {
+                    "epoch": epoch + 1,
+                    "acc": acc,
+                    "loss": loss,
+                    "valid_acc": valid_acc,
+                    "valid_loss": valid_loss,
+                }
             )
 
-            if (epoch + 1) % 5 == 0:
-                valid_loss, valid_accuracy = self.validate()
-                valid_loss = valid_loss.item()
-                valid_accuracy = valid_accuracy.item()
-
-                print_loss_accuracy("VALID", valid_loss, valid_accuracy)
-                mlflow.log_metrics(
-                    {"valid_loss": valid_loss, "valid_accuracy": valid_accuracy},
-                    step=epoch,
-                )
-
-    def train_epoch(self) -> Tuple[float, float]:
+    def _train_epoch(self) -> Tuple[float, float]:
         """
         Returns:
-            Tensor: Loss value.
-            Tensor: Accuracy value.
+            torch.Tensor: Accuracy.
+            torch.Tensor: Loss.
 
         """
         itr = 0
-        batch_accuracy = 0
-        batch_loss = 0
+        batch_acc, batch_loss = 0.0, 0.0
+        self.model.train()
         for batch in self.train_loader:
-            print("batch: ", batch)
-            print("model: ", self.model)
+            input_tensor = batch["input"]
+            label = batch["label"]
+            pred = self.model(input_tensor)
+
+            loss = self.loss_fn(pred, label)
+            batch_acc += accuracy(pred, label)
+            batch_loss += loss.cpu()
+            loss.backword()
+            self.optimizer.step()
             itr += 1
 
+        acc = batch_acc / float(itr)
         loss = batch_loss / float(itr)
-        accuracy = batch_accuracy / float(itr)
-
-        return loss, accuracy
+        return acc, loss.item()
 
     def validate(self) -> Tuple[float, float]:
         """
         Returns:
-            Tensor: Loss value.
-            Tensor: Accuracy value.
+            torch.Tensor: Accuracy.
+            torch.Tensor: Loss.
 
         """
-        self.model.eval()
         itr = 0
-        batch_accuracy = 0
-        batch_loss = 0
+        batch_acc, batch_loss = 0.0, 0.0
+        self.model.eval()
         with torch.no_grad():
             for batch in self.valid_loader:
-                print("batch: ", batch)
-                print("model: ", self.model)
+                input_tensor = batch["input"]
+                label = batch["label"]
+                pred = self.model(input_tensor)
+
+                loss = self.loss_fn(pred, label)
+                batch_acc += accuracy(pred, label)
+                batch_loss += loss.cpu()
                 itr += 1
 
+        acc = batch_acc / float(itr)
         loss = batch_loss / float(itr)
-        accuracy = batch_accuracy / float(itr)
-
-        return loss, accuracy
+        return acc, loss.item()
 
 
 def parse_cli_args():
     """
-    Parse CLI arguments.
-
     Returns:
-        Object: Argument object.
+        object: Arguments.
 
     """
+    wandb.init(project="gcma")
     parser = argparse.ArgumentParser()
-
     parser.add_argument(
-        "--train-path",
+        "--train-data",
         help="Training dataset path",
         type=str,
-        required=False,
+        required=True,
     )
     parser.add_argument(
-        "--valid-path",
+        "--valid-data",
         help="Validation dataset path",
         type=str,
-        required=False,
+        required=True,
     )
-
-    args = parser.parse_args()
-    return args
-
-
-def main():
-    """
-    Main process.
-
-    """
-    args = parse_cli_args()
-    config = TrainConfig()
-
-    train_ds = Dataset(args.train_path)
-    valid_ds = Dataset(args.valid_path)
-
-    model = make_model()
-    optimizer = getattr(optim, config.optimizer_name)(
-        model.parameters(), lr=config.learning_rate
-    )
-
-    training = Training(
-        train_ds,
-        valid_ds,
-        model,
-        optimizer,
-        config.batch_size,
-        config.epochs,
-    )
-
-    training.train()
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    with mlflow.start_run():
-        main()
+    # Get cli arguments.
+    args = parse_cli_args()
+
+    # Get configuration.
+    cfg = Config()
+
+    # Create dataset.
+    train_ds = Dataset(cfg)
+    valid_ds = Dataset(cfg)
+
+    # Create model.
+    model = make_model(cfg)
+
+    # Create loss function.
+    # TODO: Modify.
+    loss_fn = None
+
+    # Create optimizer.
+    # TODO: Modify.
+    optimizer = None
+
+    # TODO: Modify.
+    training = Training(cfg, model, train_ds, valid_ds, loss_fn, optimizer)
+    training.train()

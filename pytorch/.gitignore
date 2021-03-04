@@ -1,8 +1,3 @@
-# python
-__pycache__
-
-# Environments
-.env
-
-# mlflow
-mlruns
+# Caches
+**/__pycache__
+**/.mypy_cache

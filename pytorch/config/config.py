@@ -1,25 +1,23 @@
 """
-This module provides default configuration dataclass.
+This module provides configuration dataclass.
 
 """
 import dataclasses
 
 
 @dataclasses.dataclass(frozen=True)
-class DefaultConfig:
+class Config:
     """
-    Attributes:
-        batch_size (int): Batch size.
-        epochs (int): Epoch size.
+    Configuration class for this project.
 
     """
 
-    epochs: int = 300
     batch_size: int = 64
+    epochs: int = 300
 
-    def print_summary(self):
+    def summary(self):
         """
-        Output dataclass field names and values.
+        Output dataclass summary.
 
         """
         print("Summary ({}):".format(self.__class__.__name__))

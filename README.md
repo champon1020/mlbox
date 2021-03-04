@@ -5,7 +5,10 @@ My machine learning template project.
 
 Generate template.
 ```
-python mlbox.py -n mlproject -f pytorch
+python mlbox.py \
+    -n mlproject \
+    -f pytorch \
+    -d /path/to/project/destination
 ```
 
 See options detail.

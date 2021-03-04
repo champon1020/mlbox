@@ -113,10 +113,10 @@ class Training:
         return acc, loss.item()
 
 
-def parse_cli_args():
+def parse_cli_args() -> argparse.Namespace:
     """
     Returns:
-        object: Arguments.
+        argparse.Namespace: Arguments.
 
     """
     wandb.init(project="gcma")
